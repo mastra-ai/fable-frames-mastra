@@ -114,7 +114,7 @@ Ensure the image description incorporates elements from the story setting and ma
       // 2. Generate actual image using DALL-E based on the description
       try {
         const { image } = await generateImage({
-          model: openai.image("dall-e-3"),
+          model: openai.image("gpt-image-1"),
           prompt: imageDescription,
           size: "1024x1024",
           providerOptions: {

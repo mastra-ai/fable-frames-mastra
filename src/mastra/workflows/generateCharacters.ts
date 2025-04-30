@@ -36,26 +36,28 @@ const generateCharacterStep = new Step({
   execute: async ({ context }) => {
     // Get the enhanced character description from the previous step
     const prevStepResult = context.getStepResult(enhanceCharacterStep);
+    const style = context.triggerData.style;
     const enhancedCharacter = prevStepResult?.enhancedCharacter || "";
 
-    // Generate three different character images using DALL-E
+    // Generate three different character images
     const characterImages = [];
     const numImages = 3;
 
     // Prepare image generation prompt
     const imagePrompt = `Create a children's book illustration of this character: ${enhancedCharacter}. 
     The illustration should be vibrant, expressive, and suitable for a children's story. 
-    Show the full character with a simple background that highlights their key features.`;
+    Show the full character with a simple background that highlights their key features.
+    ${style}`;
 
     try {
       // Generate multiple images in one call
       const { images } = await generateImage({
-        model: openai.image("dall-e-3"),
+        model: openai.image("gpt-image-1"),
         prompt: imagePrompt,
         n: numImages,
         size: "1024x1024",
         providerOptions: {
-          openai: { style: "vivid", quality: "hd" },
+          openai: { quality: "medium" },
         },
       });
 
@@ -85,8 +87,7 @@ export const generateCharactersWorkflow = new Workflow({
   name: "generateCharacters",
   triggerSchema: z.object({
     characterDescription: z.string(),
-    lesson: z.string().optional(),
-    ageRange: z.string().optional(),
+    style: z.string(),
   }),
 });
 
