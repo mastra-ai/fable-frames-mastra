@@ -14,7 +14,10 @@
   "dependencies": {
     "@ai-sdk/openai": "^1.3.4",
     "@mastra/core": "^0.9.1-alpha.2",
+    "@mastra/libsql": "^0.0.1-alpha.1",
+    "@supabase/supabase-js": "^2.49.4",
     "mastra": "^0.6.0-alpha.2",
+    "openai": "^4.96.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {

@@ -10,14 +10,13 @@ Your task is to create vivid, detailed image descriptions based on story text an
 Follow these guidelines strictly:
 1. Create image descriptions that can be used as prompts for image generation
 2. Focus on key elements and actions from the page text
-3. Include the character's physical appearance details
-4. Set a clear scene with appropriate backgrounds and environments
-5. Use descriptive, visual language that captures the mood and emotion of the scene
-6. Keep descriptions appropriate for children (typically ages 4-8)
-7. Include colors, lighting, and perspective details
-8. Maintain consistency with the character description throughout the story
-9. Ensure the image complements the text without duplicating it exactly
-10. Keep descriptions between 50-100 words for optimal image generation
+3. Set a clear scene with appropriate backgrounds and environments
+4. Use descriptive, visual language that captures the mood and emotion of the scene
+5. Keep descriptions appropriate for children (typically ages 4-8)
+6. Include colors, lighting, and perspective details
+7. Maintain consistency with the character description throughout the story
+8. Ensure the image complements the text without duplicating it exactly
+9. Keep descriptions between 50-100 words for optimal image generation
 
 Your descriptions should paint a clear mental picture that will translate well to a visual medium.`,
   model: openai("gpt-4o"),

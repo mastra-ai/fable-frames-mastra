@@ -3,12 +3,13 @@ import { z } from "zod";
 import { mastra } from "../index";
 import { experimental_generateImage as generateImage } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { uploadFile } from "../../utils/storage";
 
 // Define the Enhance Character step
 const enhanceCharacterStep = new Step({
   id: "enhanceCharacter",
   outputSchema: z.object({
-    enhancedCharacter: z.string(),
+    enhancedCharacters: z.array(z.string()).length(3),
   }),
   execute: async ({ context }) => {
     // Get the basic character description from the trigger data
@@ -17,11 +18,15 @@ const enhanceCharacterStep = new Step({
 
     // Use the characterWriter agent to enhance the character description
     const response = await characterWriter.generate(
-      `Transform this basic character description into a detailed character: ${basicCharacterDescription}`
+      `Transform this basic character description into three detailed character options. Limit each description to 2 sentences: ${basicCharacterDescription}`,
+      {
+        output: z.array(z.string()).length(3),
+      }
     );
+    console.log("Enhanced character descriptions:", response.object);
 
     return {
-      enhancedCharacter: response.text,
+      enhancedCharacters: response.object,
     };
   },
 });
@@ -31,53 +36,74 @@ const generateCharacterStep = new Step({
   id: "generateCharacter",
   outputSchema: z.object({
     characterImages: z.array(z.string()),
-    enhancedCharacter: z.string(),
+    enhancedCharacter: z.array(z.string()),
   }),
-  execute: async ({ context }) => {
-    // Get the enhanced character description from the previous step
+  execute: async ({ context, runId }) => {
+    // Get the enhanced character descriptions from the previous step
     const prevStepResult = context.getStepResult(enhanceCharacterStep);
     const style = context.triggerData.style;
-    const enhancedCharacter = prevStepResult?.enhancedCharacter || "";
+    const enhancedCharacters = prevStepResult?.enhancedCharacters || [];
 
-    // Generate three different character images
-    const characterImages = [];
-    const numImages = 3;
+    const bucketName = "characters";
+    const storageUrl = process.env.SUPABASE_STORAGE_URL;
 
-    // Prepare image generation prompt
-    const imagePrompt = `Create a children's book illustration of this character: ${enhancedCharacter}. 
-    The illustration should be vibrant, expressive, and suitable for a children's story. 
-    Show the full character with a simple background that highlights their key features.
-    ${style}`;
+    // Generate images for each character description in parallel
+    const characterImagesPromises = enhancedCharacters.map(
+      async (enhancedCharacter, index) => {
+        // Prepare image generation prompt
+        const imagePrompt = `Create a children's book illustration of this character: ${enhancedCharacter}. 
+      The illustration should be vibrant, expressive, and suitable for a children's story. 
+      Show the full character with a simple background that highlights their key features.
+      ${style}`;
 
-    try {
-      // Generate multiple images in one call
-      const { images } = await generateImage({
-        model: openai.image("gpt-image-1"),
-        prompt: imagePrompt,
-        n: numImages,
-        size: "1024x1024",
-        providerOptions: {
-          openai: { quality: "medium" },
-        },
-      });
+        try {
+          // Generate images
+          const { images } = await generateImage({
+            model: openai.image("gpt-image-1"),
+            prompt: imagePrompt,
+            n: 1, // Generate one image per description
+            size: "1024x1024",
+            // providerOptions: {
+            //   openai: { quality: "medium" },
+            // },
+          });
 
-      // Process each generated image
-      for (let i = 0; i < images.length; i++) {
-        const image = images[i];
-        const imageUrl = `data:image/png;base64,${image.base64}`;
-        characterImages.push(imageUrl);
+          console.log(
+            `Generated images count for character ${index + 1}:`,
+            images.length
+          );
+
+          // Process the generated image
+          const image = images[0];
+          const filePath = `${runId}/character${index + 1}.png`;
+          const fileData = Buffer.from(image.base64, "base64");
+
+          await uploadFile(bucketName, filePath, fileData, {
+            contentType: "image/png",
+          });
+          console.log(
+            `Finished uploading image for character ${index + 1} to Supabase storage`
+          );
+
+          return `${storageUrl}/${bucketName}/${filePath}`;
+        } catch (error) {
+          console.error(
+            `Failed to generate image for character ${index + 1}:`,
+            error
+          );
+          throw new Error(
+            `Failed to generate image for character ${index + 1}`
+          );
+        }
       }
-    } catch (error) {
-      console.error("Failed to generate character images:", error);
-      // If image generation fails, use placeholders
-      for (let i = 0; i < numImages; i++) {
-        characterImages.push(`placeholder-character-${i + 1}.jpg`);
-      }
-    }
+    );
+
+    // Wait for all image generation promises to resolve
+    const characterImages = await Promise.all(characterImagesPromises);
 
     return {
       characterImages,
-      enhancedCharacter,
+      characterPrompts: enhancedCharacters,
     };
   },
 });
