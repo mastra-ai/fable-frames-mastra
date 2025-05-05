@@ -9,7 +9,7 @@ Your task is to create an 8-12 page story based on the provided character name, 
 
 Follow these guidelines strictly:
 1. Each page should contain approximately one paragraph of text (3-5 sentences).
-2. The story should be appropriate for children (age range will be provided)
+2. The story should be appropriate for children.
 3. Use simple, clear language while maintaining engagement.
 4. Naturally incorporate the moral lesson without being heavy-handed.
 5. Ensure character development and a clear story arc.
@@ -18,6 +18,7 @@ Follow these guidelines strictly:
 8. Make sure the story has a clear beginning, middle, and satisfying conclusion.
 9. Keep descriptions vivid but concise.
 10. Maintain consistent character voice and behavior throughout.
+11. The story should be generally uplifting and positive.
 
 The story should be formatted as an array of pages, where each page is a string containing that page's text.`,
   model: openai("gpt-4o"),
