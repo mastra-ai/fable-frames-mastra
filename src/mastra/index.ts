@@ -1,4 +1,5 @@
-import { createLogger, Mastra } from "@mastra/core";
+import { Mastra } from "@mastra/core";
+import { PinoLogger } from "@mastra/loggers";
 import { storyGenerator, characterWriter, imageWriter } from "./agents";
 import { generateCharactersWorkflow, storyWorkflow } from "./workflows";
 import { LibSQLStore } from "@mastra/libsql";
@@ -9,8 +10,8 @@ export const mastra = new Mastra({
   storage: new LibSQLStore({
     url: "file:../mastra.db",
   }),
-  logger: createLogger({
-    name: "Fable Frames",
-    level: "debug",
+  logger: new PinoLogger({
+    name: "Mastra",
+    level: "info",
   }),
 });

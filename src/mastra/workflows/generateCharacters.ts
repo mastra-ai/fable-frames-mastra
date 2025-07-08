@@ -1,19 +1,23 @@
-import { Workflow, Step } from "@mastra/core/workflows";
+import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
-import { mastra } from "../index";
 import { experimental_generateImage as generateImage } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { uploadFile } from "../../utils/storage";
 
 // Define the Enhance Character step
-const enhanceCharacterStep = new Step({
+const enhanceCharacterStep = createStep({
   id: "enhanceCharacter",
-  outputSchema: z.object({
-    enhancedCharacters: z.array(z.string()).length(3),
+  inputSchema: z.object({
+    characterDescription: z.string(),
+    style: z.string(),
   }),
-  execute: async ({ context }) => {
+  outputSchema: z.object({
+    characterPrompts: z.array(z.string()).length(3),
+    style: z.string(),
+  }),
+  execute: async ({ inputData, mastra }) => {
     // Get the basic character description from the trigger data
-    const basicCharacterDescription = context.triggerData.characterDescription;
+    const basicCharacterDescription = inputData.characterDescription;
     const characterWriter = mastra.getAgent("characterWriter");
 
     // Use the characterWriter agent to enhance the character description
@@ -26,32 +30,36 @@ const enhanceCharacterStep = new Step({
     console.log("Enhanced character descriptions:", response.object);
 
     return {
-      enhancedCharacters: response.object,
+      characterPrompts: response.object,
+      style: inputData.style,
     };
   },
 });
 
 // Define the Generate Character step - this step generates images
-const generateCharacterStep = new Step({
+const generateCharacterStep = createStep({
   id: "generateCharacter",
-  outputSchema: z.object({
-    characterImages: z.array(z.string()),
-    enhancedCharacter: z.array(z.string()),
+  inputSchema: z.object({
+    characterPrompts: z.array(z.string()),
+    style: z.string(),
   }),
-  execute: async ({ context, runId }) => {
-    // Get the enhanced character descriptions from the previous step
-    const prevStepResult = context.getStepResult(enhanceCharacterStep);
-    const style = context.triggerData.style;
-    const enhancedCharacters = prevStepResult?.enhancedCharacters || [];
+  outputSchema: z.object({
+    characterPrompts: z.array(z.string()),
+    style: z.string(),
+    characterImages: z.array(z.string()),
+  }),
+  execute: async ({ inputData, runId }) => {
+    const style = inputData.style;
+    const characterPrompts = inputData?.characterPrompts || [];
 
     const bucketName = "characters";
     const storageUrl = process.env.SUPABASE_STORAGE_URL;
 
     // Generate images for each character description in parallel
-    const characterImagesPromises = enhancedCharacters.map(
-      async (enhancedCharacter, index) => {
+    const characterImagesPromises = characterPrompts.map(
+      async (characterPrompt, index) => {
         // Prepare image generation prompt
-        const imagePrompt = `Create a children's book illustration of this character: ${enhancedCharacter}. 
+        const imagePrompt = `Create a children's book illustration of this character: ${characterPrompt}. 
       The illustration should be vibrant, expressive, and suitable for a children's story. 
       Show the full character with a simple background that highlights their key features.
       ${style}`;
@@ -102,23 +110,27 @@ const generateCharacterStep = new Step({
     const characterImages = await Promise.all(characterImagesPromises);
 
     return {
+      style,
       characterImages,
-      characterPrompts: enhancedCharacters,
+      characterPrompts,
     };
   },
 });
 
 // Create the master workflow
-export const generateCharactersWorkflow = new Workflow({
-  name: "generateCharacters",
-  triggerSchema: z.object({
+export const generateCharactersWorkflow = createWorkflow({
+  id: "generateCharacters",
+  description: "Generate characters for a children's book",
+  inputSchema: z.object({
     characterDescription: z.string(),
     style: z.string(),
   }),
-});
-
-// Set up the workflow steps in sequence
-generateCharactersWorkflow
-  .step(enhanceCharacterStep)
+  outputSchema: z.object({
+    characterPrompts: z.array(z.string()),
+    style: z.string(),
+    characterImages: z.array(z.string()),
+  }),
+})
+  .then(enhanceCharacterStep)
   .then(generateCharacterStep)
   .commit();
